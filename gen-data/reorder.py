@@ -1,4 +1,4 @@
-import blenderproc as bproc
+import blenderproc as bproc  # On version 2.8.0
 
 import random
 import time
@@ -6,12 +6,13 @@ import re
 import bpy
 import random
 import re
-
+import os
+import numpy as np
 # Init BlenderProc
 bproc.init()
 
 # Load your scene
-bproc.loader.load_blend("ChessBoard.blend")
+loaded = bproc.loader.load_blend("ChessBoard.blend")
 
 positionsDict = {
     'A1': (-0.87574, -0.87857),
@@ -204,15 +205,20 @@ for name, square in placement.items():
     bpy.data.objects[name].location.x  = x
     bpy.data.objects[name].location.y  = y
 
-# Set render output directory
-bproc.renderer.set_output_format(enable_transparency=False)  # PNG by default
+# Create a point light next to it
+light = bproc.types.Light()
+light.set_location([0.0, 0.0, 2.0])
+light.set_energy(1000.0)
 
-# Get the camera from the scene or create one if needed
-cam = bproc.filter.one_by_attr(bproc.object.Camera, "name", "Camera")
+# Set the camera to be in front of the object
+bproc.camera.set_resolution(480, 640)
+cam_pose1 = bproc.math.build_transformation_mat([0, -5, 0], [np.pi / 2, 0, 0])
+bproc.camera.add_camera_pose(cam_pose1)
+cam_pose2 = bproc.math.build_transformation_mat([0, 5, 0], [np.pi / 2, 0, np.pi])
+bproc.camera.add_camera_pose(cam_pose2)
 
-# Set it as active (optional, but good for clarity)
-bproc.camera.add_camera_pose(cam.get_pose())
+# Render the scene
+data = bproc.renderer.render()
 
-# Render and save
-bproc.renderer.render()
-bproc.writer.write_png("output/")
+# Write the rendering into an hdf5 file
+bproc.writer.write_hdf5("output/", data)
