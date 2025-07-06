@@ -8,6 +8,7 @@ import random
 import re
 import os
 import numpy as np
+
 # Init BlenderProc
 bproc.init()
 
@@ -205,20 +206,39 @@ for name, square in placement.items():
     bpy.data.objects[name].location.x  = x
     bpy.data.objects[name].location.y  = y
 
+# The below code was taken from the BlenderProc documentation
 # Create a point light next to it
 light = bproc.types.Light()
 light.set_location([0.0, 0.0, 2.0])
 light.set_energy(1000.0)
 
 # Set the camera to be in front of the object
+
+# DO ORBITING CAMERA WITH FOR LOOP MAGIC
 bproc.camera.set_resolution(480, 640)
 cam_pose1 = bproc.math.build_transformation_mat([0, -5, 0], [np.pi / 2, 0, 0])
 bproc.camera.add_camera_pose(cam_pose1)
 cam_pose2 = bproc.math.build_transformation_mat([0, 5, 0], [np.pi / 2, 0, np.pi])
 bproc.camera.add_camera_pose(cam_pose2)
 
+# Get segmentation masks for all objects
+# Set some category ids for loaded objects
+for j, obj in enumerate(loaded):
+    obj.set_cp("category_id", j+1)
+
+# Render segmentation data and produce instance attribute maps
+seg_data = bproc.renderer.render_segmap(map_by=["instance", "class", "name"])
+
+
 # Render the scene
 data = bproc.renderer.render()
 
-# Write the rendering into an hdf5 file
-bproc.writer.write_hdf5("output/", data)
+# # Write the rendering into an hdf5 file
+# bproc.writer.write_hdf5("output/", data)
+
+# Write data to coco file
+bproc.writer.write_coco_annotations('coco_data',
+                                    instance_segmaps=seg_data["instance_segmaps"],
+                                    instance_attribute_maps=seg_data["instance_attribute_maps"],
+                                    colors=data["colors"],
+                                    color_file_format="JPEG")
