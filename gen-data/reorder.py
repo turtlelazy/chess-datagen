@@ -8,6 +8,7 @@ import random
 import re
 import os
 import numpy as np
+import re
 
 # Init BlenderProc
 bproc.init()
@@ -198,13 +199,13 @@ for name,square in pieceToSquareDict.items():
     bpy.data.objects[name].location.y  = y
     bpy.data.objects[name].hide_viewport = False
 
-placement = randomizePositions()
+# placement = randomizePositions()
 
-# placement is now a dict mapping (EX: 'BlackPawn3' → 'E5')
-for name, square in placement.items():
-    x,y = positionsDict[square]
-    bpy.data.objects[name].location.x  = x
-    bpy.data.objects[name].location.y  = y
+# # placement is now a dict mapping (EX: 'BlackPawn3' → 'E5')
+# for name, square in placement.items():
+#     x,y = positionsDict[square]
+#     bpy.data.objects[name].location.x  = x
+#     bpy.data.objects[name].location.y  = y
 
 # The below code was taken from the BlenderProc documentation
 # Create a point light next to it
@@ -215,16 +216,52 @@ light.set_energy(1000.0)
 # Set the camera to be in front of the object
 
 # DO ORBITING CAMERA WITH FOR LOOP MAGIC
-bproc.camera.set_resolution(480, 640)
-cam_pose1 = bproc.math.build_transformation_mat([0, -5, 0], [np.pi / 2, 0, 0])
+bproc.camera.set_resolution(640, 480)
+cam_pose1 = bproc.math.build_transformation_mat([0, -5, 5], [np.pi / 4, 0, 0])
 bproc.camera.add_camera_pose(cam_pose1)
-cam_pose2 = bproc.math.build_transformation_mat([0, 5, 0], [np.pi / 2, 0, np.pi])
+cam_pose2 = bproc.math.build_transformation_mat([0, 5, 5], [np.pi / 4, 0, np.pi])
 bproc.camera.add_camera_pose(cam_pose2)
 
 # Get segmentation masks for all objects
 # Set some category ids for loaded objects
-for j, obj in enumerate(loaded):
-    obj.set_cp("category_id", j+1)
+
+CATEGORY_NAME_TO_ID = {
+    "WhitePawn": 1,
+    "WhiteRook": 2,
+    "WhiteKnight": 3,
+    "WhiteBishop": 4,
+    "WhiteQueen": 5,
+    "WhiteKing": 6,
+
+    "BlackPawn": 7,
+    "BlackRook": 8,
+    "BlackKnight": 9,
+    "BlackBishop": 10,
+    "BlackQueen": 11,
+    "BlackKing": 12,
+
+    "Board": 13,
+    "Cylinder": 14
+}
+
+# Problem: BlenderProc treats each version of same object as a different object
+# Need to find way to group objects by common name category
+# For example, 'BlackPawn1' and 'BlackPawn2' should be grouped under 'BlackPawn'
+
+def get_base_name(name):
+    # Remove trailing digits: 'WhitePawn1' → 'WhitePawn'
+    return re.sub(r'\d+$', '', name)
+
+for obj in loaded:
+    full_name = obj.get_name()
+    base_name = get_base_name(full_name)
+
+    if base_name not in CATEGORY_NAME_TO_ID:
+        print(f"WARNING: Unknown category name '{base_name}' for object '{full_name}'")
+        continue
+
+    obj.set_cp("category_id", CATEGORY_NAME_TO_ID[base_name])
+print("Category IDs assigned:", CATEGORY_NAME_TO_ID)
 
 # Render segmentation data and produce instance attribute maps
 seg_data = bproc.renderer.render_segmap(map_by=["instance", "class", "name"])
@@ -233,12 +270,19 @@ seg_data = bproc.renderer.render_segmap(map_by=["instance", "class", "name"])
 # Render the scene
 data = bproc.renderer.render()
 
-# # Write the rendering into an hdf5 file
+# Write the rendering into an hdf5 file
 # bproc.writer.write_hdf5("output/", data)
 
 # Write data to coco file
-bproc.writer.write_coco_annotations('coco_data',
-                                    instance_segmaps=seg_data["instance_segmaps"],
-                                    instance_attribute_maps=seg_data["instance_attribute_maps"],
-                                    colors=data["colors"],
-                                    color_file_format="JPEG")
+categories = [
+    {"id": id, "name": name, "supercategory": "chess"}
+    for name, id in CATEGORY_NAME_TO_ID.items()
+]
+
+bproc.writer.write_coco_annotations(
+    'coco_data',
+    instance_segmaps=seg_data["instance_segmaps"],
+    instance_attribute_maps=seg_data["instance_attribute_maps"],
+    colors=data["colors"],
+    color_file_format="JPEG",
+)
