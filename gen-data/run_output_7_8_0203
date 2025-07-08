@@ -1,0 +1,7 @@
+Selecting render devices...
+Device Quadro P6000 of type OPTIX found and used.
+Device Intel Xeon Bronze 3104 CPU @ 1.70GHz of type CPU found and used.
+Imported 37 objects
+Selected 35 of the loaded objects by type
+WARNING: Unknown category name 'Plane' for object 'Plane'
+Rendering 200 frames of ...

@@ -10,12 +10,14 @@ import os
 import numpy as np
 import re
 
-# Init BlenderProc
+# Init BlenderProc and Optimize
 bproc.init()
 
 # Load your scene
 loaded = bproc.loader.load_blend("ChessBoard.blend")
 
+# ----- PIECE PLACEMENT -----
+# This section defines the positions of the chess pieces on the board.
 positionsDict = {
     'A1': (-0.87574, -0.87857),
     'A2': (-0.87574, -0.628312),
@@ -149,10 +151,11 @@ def randomizePositions():
 
     # if piece were chosen, add it to pieces otherwise make it disappear
     for p in pieceList:
-        if random.random() > random.random() or 'King' in p.name_:
+        if random.random() > random.random() or 'King' in p.name_: # each piece has a 50% chance of selection, but kings are always selected
             pieces.append(p)
         else:
             bpy.data.objects[p.name_].hide_viewport = True
+            bpy.data.objects[p.name_].hide_render = True
             
     #shuffe the pieces
     random.shuffle(pieces)
@@ -198,32 +201,9 @@ for name,square in pieceToSquareDict.items():
     bpy.data.objects[name].location.x  = x
     bpy.data.objects[name].location.y  = y
     bpy.data.objects[name].hide_viewport = False
+    bpy.data.objects[name].hide_render = False
 
-# placement = randomizePositions()
-
-# # placement is now a dict mapping (EX: 'BlackPawn3' → 'E5')
-# for name, square in placement.items():
-#     x,y = positionsDict[square]
-#     bpy.data.objects[name].location.x  = x
-#     bpy.data.objects[name].location.y  = y
-
-# The below code was taken from the BlenderProc documentation
-# Create a point light next to it
-light = bproc.types.Light()
-light.set_location([0.0, 0.0, 2.0])
-light.set_energy(1000.0)
-
-# Set the camera to be in front of the object
-
-# DO ORBITING CAMERA WITH FOR LOOP MAGIC
-bproc.camera.set_resolution(640, 480)
-cam_pose1 = bproc.math.build_transformation_mat([0, -5, 5], [np.pi / 4, 0, 0])
-bproc.camera.add_camera_pose(cam_pose1)
-cam_pose2 = bproc.math.build_transformation_mat([0, 5, 5], [np.pi / 4, 0, np.pi])
-bproc.camera.add_camera_pose(cam_pose2)
-
-# Get segmentation masks for all objects
-# Set some category ids for loaded objects
+# Labeling for COCO annotations
 
 CATEGORY_NAME_TO_ID = {
     "WhitePawn": 1,
@@ -254,6 +234,7 @@ def get_base_name(name):
 
 for obj in loaded:
     full_name = obj.get_name()
+    
     base_name = get_base_name(full_name)
 
     if base_name not in CATEGORY_NAME_TO_ID:
@@ -261,28 +242,66 @@ for obj in loaded:
         continue
 
     obj.set_cp("category_id", CATEGORY_NAME_TO_ID[base_name])
-print("Category IDs assigned:", CATEGORY_NAME_TO_ID)
+# print("Category IDs assigned:", CATEGORY_NAME_TO_ID)
 
-# Render segmentation data and produce instance attribute maps
-seg_data = bproc.renderer.render_segmap(map_by=["instance", "class", "name"])
+# DO ORBITING CAMERA WITH FOR LOOP MAGIC
+
+# ----- CAMERA SETUP -----
+# This section sets up the camera to orbit around the chessboard.
+# The camera will be positioned at a distance and look towards the center of the board.
+
+# The below code was taken from the BlenderProc documentation
+# Create a point light next to it
+light = bproc.types.Light()
+light.set_location([0.0, 0.0, 2.0]) # Light above the chessboard
+light.set_energy(1000.0)
+bproc.camera.set_resolution(640, 480)  # Set the resolution of the rendered images
 
 
-# Render the scene
-data = bproc.renderer.render()
+# GPT Soup to create a fibonacci sphere for camera positions
+# This will create a set of camera positions that are evenly distributed around the sphere
+rho = 4.5  # Distance from origin
+N = 200    # Number of cameras
+num_random_setup = 100  # Number of random setups to generate
 
-# Write the rendering into an hdf5 file
-# bproc.writer.write_hdf5("output/", data)
+# Golden angle in radians
+golden_angle = np.pi * (3 - np.sqrt(5))
+for z in range(num_random_setup):
+    # Randomly shuffle the pieceList to create a new random setup
+    placement = randomizePositions()
+    # placement is now a dict mapping (EX: 'BlackPawn3' → 'E5')
+    for name, square in placement.items():
+        x,y = positionsDict[square]
+        bpy.data.objects[name].location.x  = x
+        bpy.data.objects[name].location.y  = y
 
-# Write data to coco file
-categories = [
-    {"id": id, "name": name, "supercategory": "chess"}
-    for name, id in CATEGORY_NAME_TO_ID.items()
-]
+    for i in range(N):
+        z = 1 - (i) / (N - 1)            # z from 1 to -1
+        radius = np.sqrt(1 - z * z)          # radius at that z
+        theta = golden_angle * i             # azimuthal angle
 
-bproc.writer.write_coco_annotations(
-    'coco_data',
-    instance_segmaps=seg_data["instance_segmaps"],
-    instance_attribute_maps=seg_data["instance_attribute_maps"],
-    colors=data["colors"],
-    color_file_format="JPEG",
-)
+        x = np.cos(theta) * radius
+        y = np.sin(theta) * radius
+
+        pos = rho * np.array([x, y, z])      # scale to radius rho
+
+        # Camera looks at origin
+        forward_vec = -pos / np.linalg.norm(pos)
+        rotation = bproc.camera.rotation_from_forward_vec(forward_vec)
+
+        cam_pose = bproc.math.build_transformation_mat(pos.tolist(), rotation)
+        bproc.camera.add_camera_pose(cam_pose)
+
+    # Render segmentation data and produce instance attribute maps
+    seg_data = bproc.renderer.render_segmap(map_by=["instance", "class", "name"])
+    # Render the scene
+    data = bproc.renderer.render()
+    # Write data to coco file
+    bproc.writer.write_coco_annotations(
+        'coco_data',
+        instance_segmaps=seg_data["instance_segmaps"],
+        instance_attribute_maps=seg_data["instance_attribute_maps"],
+        colors=data["colors"],
+        color_file_format="JPEG",
+        append_to_existing_output=True,  # <-- important!
+    )
