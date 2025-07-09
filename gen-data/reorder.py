@@ -256,16 +256,38 @@ light = bproc.types.Light()
 light.set_location([0.0, 0.0, 2.0]) # Light above the chessboard
 light.set_energy(1000.0)
 bproc.camera.set_resolution(640, 480)  # Set the resolution of the rendered images
+bproc.renderer.set_output_format(enable_transparency=True)
 
 
 # GPT Soup to create a fibonacci sphere for camera positions
 # This will create a set of camera positions that are evenly distributed around the sphere
 rho = 4.5  # Distance from origin
-N = 200    # Number of cameras
-num_random_setup = 100  # Number of random setups to generate
+N = 10    # Number of cameras
+num_random_setup = 10  # Number of random setups to generate
 
 # Golden angle in radians
 golden_angle = np.pi * (3 - np.sqrt(5))
+
+# Add Camera poses first
+# Camera poses persist
+for i in range(N):
+    z = 1 - (i) / (N - 1)            # z from 1 to -1
+    radius = np.sqrt(1 - z * z)          # radius at that z
+    theta = golden_angle * i             # azimuthal angle
+
+    x = np.cos(theta) * radius
+    y = np.sin(theta) * radius
+
+    pos = rho * np.array([x, y, z])      # scale to radius rho
+
+    # Camera looks at origin
+    forward_vec = -pos / np.linalg.norm(pos)
+    rotation = bproc.camera.rotation_from_forward_vec(forward_vec)
+
+    cam_pose = bproc.math.build_transformation_mat(pos.tolist(), rotation)
+    bproc.camera.add_camera_pose(cam_pose)
+
+# Render for each randomized position
 for z in range(num_random_setup):
     # Randomly shuffle the pieceList to create a new random setup
     placement = randomizePositions()
@@ -275,30 +297,13 @@ for z in range(num_random_setup):
         bpy.data.objects[name].location.x  = x
         bpy.data.objects[name].location.y  = y
 
-    for i in range(N):
-        z = 1 - (i) / (N - 1)            # z from 1 to -1
-        radius = np.sqrt(1 - z * z)          # radius at that z
-        theta = golden_angle * i             # azimuthal angle
-
-        x = np.cos(theta) * radius
-        y = np.sin(theta) * radius
-
-        pos = rho * np.array([x, y, z])      # scale to radius rho
-
-        # Camera looks at origin
-        forward_vec = -pos / np.linalg.norm(pos)
-        rotation = bproc.camera.rotation_from_forward_vec(forward_vec)
-
-        cam_pose = bproc.math.build_transformation_mat(pos.tolist(), rotation)
-        bproc.camera.add_camera_pose(cam_pose)
-
     # Render segmentation data and produce instance attribute maps
     seg_data = bproc.renderer.render_segmap(map_by=["instance", "class", "name"])
     # Render the scene
     data = bproc.renderer.render()
     # Write data to coco file
     bproc.writer.write_coco_annotations(
-        'coco_data',
+        'coco_data_7_8_25__20_02',
         instance_segmaps=seg_data["instance_segmaps"],
         instance_attribute_maps=seg_data["instance_attribute_maps"],
         colors=data["colors"],
