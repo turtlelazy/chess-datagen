@@ -9,13 +9,17 @@ import re
 import os
 import numpy as np
 import re
-
+import json
+import os
+import math
+import datetime
 # Init BlenderProc and Optimize
 bproc.init()
 
 # Load your scene
 loaded = bproc.loader.load_blend("ChessBoard.blend")
-
+output_path = datetime.datetime.now().strftime("coco_data_%Y_%m_%d__%H_%M_%S")
+os.makedirs(output_path, exist_ok=True)
 # ----- PIECE PLACEMENT -----
 # This section defines the positions of the chess pieces on the board.
 positionsDict = {
@@ -224,10 +228,6 @@ CATEGORY_NAME_TO_ID = {
     "Cylinder": 14
 }
 
-# Problem: BlenderProc treats each version of same object as a different object
-# Need to find way to group objects by common name category
-# For example, 'BlackPawn1' and 'BlackPawn2' should be grouped under 'BlackPawn'
-
 def get_base_name(name):
     # Remove trailing digits: 'WhitePawn1' → 'WhitePawn'
     return re.sub(r'\d+$', '', name)
@@ -242,9 +242,6 @@ for obj in loaded:
         continue
 
     obj.set_cp("category_id", CATEGORY_NAME_TO_ID[base_name])
-# print("Category IDs assigned:", CATEGORY_NAME_TO_ID)
-
-# DO ORBITING CAMERA WITH FOR LOOP MAGIC
 
 # ----- CAMERA SETUP -----
 # This section sets up the camera to orbit around the chessboard.
@@ -262,7 +259,7 @@ bproc.renderer.set_output_format(enable_transparency=True)
 # GPT Soup to create a fibonacci sphere for camera positions
 # This will create a set of camera positions that are evenly distributed around the sphere
 rho = 4.5  # Distance from origin
-N = 10    # Number of cameras
+N = 2    # Number of cameras
 num_random_setup = 10  # Number of random setups to generate
 
 # Golden angle in radians
@@ -288,8 +285,27 @@ for i in range(N):
     bproc.camera.add_camera_pose(cam_pose)
 
 # Render for each randomized position
+trn_val_tst_split = [6,2,2]
+gcd = math.gcd(math.gcd(trn_val_tst_split[0], trn_val_tst_split[1]), trn_val_tst_split[2])
+trn_val_tst_split = [x // gcd for x in trn_val_tst_split]
+split_map = {0: 'train', 1: 'val', 2: 'test'}
+
 for z in range(num_random_setup):
     # Randomly shuffle the pieceList to create a new random setup
+    # Determine which split this iteration belongs to (0=train, 1=val, 2=test)
+
+    # Magic number stuff to figure out which split this is
+    # This is a s̶i̶m̶p̶l̶e̶ bad way to split the data into train, validation, and test sets
+    # Please don't fire me in the future or flame me for this i plead innocence
+    split_idx = z % sum(trn_val_tst_split)
+    if split_idx < trn_val_tst_split[0]:
+        split_idx = 0
+    elif split_idx < trn_val_tst_split[0] + trn_val_tst_split[1]:
+        split_idx = 1
+    else:
+        split_idx = 2
+
+    dir_pre = split_map[split_idx]
     placement = randomizePositions()
     # placement is now a dict mapping (EX: 'BlackPawn3' → 'E5')
     for name, square in placement.items():
@@ -302,11 +318,34 @@ for z in range(num_random_setup):
     # Render the scene
     data = bproc.renderer.render()
     # Write data to coco file
-    bproc.writer.write_coco_annotations(
-        'coco_data_7_8_25__20_02',
+    image_paths = bproc.writer.write_coco_annotations(
+        f'{output_path}/{dir_pre}',
         instance_segmaps=seg_data["instance_segmaps"],
         instance_attribute_maps=seg_data["instance_attribute_maps"],
         colors=data["colors"],
-        color_file_format="JPEG",
+        color_file_format="PNG",
         append_to_existing_output=True,  # <-- important!
-    )
+    ) 
+    # THE OUTPUT OF WRITE COCO WAS MODIFIED TO RETURN THE IMAGE PATHS; ENSURE THIS IS DONE IN FUTURE CODE REVISIONS
+
+    input_json_path = f'{output_path}/{dir_pre}/board_placements.json'
+
+    # Load existing data or create new list
+    if os.path.exists(input_json_path):
+        with open(input_json_path, "r") as f:
+            try:
+                data_list = json.load(f)
+            except json.JSONDecodeError:
+                data_list = {}
+    else:
+        data_list = {}
+
+    # Append new entries
+    for path in image_paths:
+        if path in data_list.keys():
+            print(f"WARNING: File path '{path}' is already in the board_placements.json -> overwriting entry.")
+        data_list[path] = placement
+
+    # Save back to file
+    with open(input_json_path, "w") as f:
+        json.dump(data_list, f)
