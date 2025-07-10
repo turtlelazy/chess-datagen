@@ -1,1 +1,4 @@
 coco_data*/
+env
+coco_converted
+__pycache__

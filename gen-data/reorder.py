@@ -3,7 +3,7 @@ import blenderproc as bproc  # On version 2.8.0
 import random
 import time
 import re
-import bpy
+import bpy  # type: ignore
 import random
 import re
 import os
@@ -258,16 +258,18 @@ bproc.renderer.set_output_format(enable_transparency=True)
 
 # GPT Soup to create a fibonacci sphere for camera positions
 # This will create a set of camera positions that are evenly distributed around the sphere
-rho = 4.5  # Distance from origin
-N = 2    # Number of cameras
-num_random_setup = 10  # Number of random setups to generate
-
+  # Distance from origin
+N = 200    # Number of cameras
+num_random_setup = 100  # Number of random setups to generate
+print(f"Generating {num_random_setup} random setups with {N} camera positions each...")
 # Golden angle in radians
 golden_angle = np.pi * (3 - np.sqrt(5))
 
-# Add Camera poses first
-# Camera poses persist
+# Add Camera poses
 for i in range(N):
+    
+    rho = random.uniform(4.5, 6.5)
+
     z = 1 - (i) / (N - 1)            # z from 1 to -1
     radius = np.sqrt(1 - z * z)          # radius at that z
     theta = golden_angle * i             # azimuthal angle
@@ -291,6 +293,8 @@ trn_val_tst_split = [x // gcd for x in trn_val_tst_split]
 split_map = {0: 'train', 1: 'val', 2: 'test'}
 
 for z in range(num_random_setup):
+    print(f"==== Render step {z+1}/{num_random_setup}... ====")
+    current_time = time.time()
     # Randomly shuffle the pieceList to create a new random setup
     # Determine which split this iteration belongs to (0=train, 1=val, 2=test)
 
@@ -320,9 +324,9 @@ for z in range(num_random_setup):
     # Write data to coco file
     image_paths = bproc.writer.write_coco_annotations(
         f'{output_path}/{dir_pre}',
-        instance_segmaps=seg_data["instance_segmaps"],
-        instance_attribute_maps=seg_data["instance_attribute_maps"],
-        colors=data["colors"],
+        instance_segmaps=seg_data["instance_segmaps"], # type: ignore
+        instance_attribute_maps=seg_data["instance_attribute_maps"], # type: ignore
+        colors=data["colors"], # type: ignore
         color_file_format="PNG",
         append_to_existing_output=True,  # <-- important!
     ) 
@@ -349,3 +353,4 @@ for z in range(num_random_setup):
     # Save back to file
     with open(input_json_path, "w") as f:
         json.dump(data_list, f)
+    print(f"==== Render step {z+1} completed in {time.time() - current_time:.2f} seconds. ====")

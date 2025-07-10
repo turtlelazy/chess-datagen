@@ -5458,3 +5458,8 @@ Warning! Detected output entries with duplicate keys and paths
 Warning! Detected output entries with duplicate keys and paths
 Warning! Detected output entries with duplicate keys and paths
 Rendering 200 frames of colors, segmap...
+
+Warning: Changed install path from /home_local/imahid... to /home/imahid..., there is no /home_local/ on this machine.
+Using blender in /home/imahid/blender/blender-4.2.1-linux-x64
+Using temporary directory: /dev/shm/blender_proc_95e118447eb949af9083f5f727dafbc3
+Cleaning temporary directory
