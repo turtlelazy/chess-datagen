@@ -20,12 +20,16 @@ bproc.init()
 bproc.renderer.set_cpu_threads(0)
 bproc.renderer.set_render_devices(
     use_only_cpu=False,
-    desired_gpu_device_type="OPTIX",
+    desired_gpu_device_type="OPTIX",  # TODO: Change to your gpu type
     desired_gpu_ids=0
 )
 bproc.renderer.set_noise_threshold(0.1)
-bproc.renderer.set_max_amount_of_samples(128)
+
+# seems to not go any faster after lowering from 32
+bproc.renderer.set_max_amount_of_samples(32)
+
 bproc.renderer.set_denoiser("OPTIX")
+
 bproc.renderer.set_light_bounces(3,3,4,4,12,8,0)
 
 # Load your scene
@@ -205,11 +209,11 @@ FILES = 'ABCDEFGH'
 RANKS = '12345678'
 
 # mapping squares to tile color
-tile_color = {
-    square: ((FILES.index(square[0]) + RANKS.index(square[1])) % 2 == 1)
-    for square in positionsDict
-}
-
+tile_color = {}
+for f in FILES:
+    for r in RANKS:
+        # Chessboard coloring: bottom left (A1) is black (False)
+        tile_color[f + r] = ((FILES.index(f) + RANKS.index(r)) % 2 == 1)
 
 pieceList = []
 
@@ -276,7 +280,7 @@ bproc.renderer.set_output_format(enable_transparency=True)
 # GPT Soup to create a fibonacci sphere for camera positions
 # This will create a set of camera positions that are evenly distributed around the sphere
   # Distance from origin
-N = 10    # Number of cameras
+N = 100    # Number of cameras
 num_random_setup = 200  # Number of random setups to generate
 print(f"Generating {num_random_setup} random setups with {N} camera positions each...")
 # Golden angle in radians
@@ -284,7 +288,6 @@ golden_angle = np.pi * (3 - np.sqrt(5))
 
 # Add Camera poses
 for i in range(N):
-    
     rho = random.uniform(4.5, 6.5)
 
     z = 1 - (i) / (N - 1)            # z from 1 to -1
@@ -309,6 +312,11 @@ gcd = math.gcd(math.gcd(trn_val_tst_split[0], trn_val_tst_split[1]), trn_val_tst
 trn_val_tst_split = [x // gcd for x in trn_val_tst_split]
 split_map = {0: 'train', 1: 'val', 2: 'test'}
 
+
+# TODO: Turn this into some sort of queue for parallelizatoin
+# TODO: Run tasks asynchronously up until the coco_write portion
+# TODO: Enable rendering of multiple scenes simultanouesly for faster renders
+avg_time = 0
 for z in range(num_random_setup):
     print(f"==== Render step {z+1}/{num_random_setup}... ====")
     current_time = time.time()
@@ -356,6 +364,7 @@ for z in range(num_random_setup):
     # Render the scene
     data = bproc.renderer.render()
     # Write data to coco file
+    write_start = time.time()
     image_paths = bproc.writer.write_coco_annotations(
         f'{output_path}/{dir_pre}',
         instance_segmaps=seg_data["instance_segmaps"], # type: ignore
@@ -387,4 +396,8 @@ for z in range(num_random_setup):
     # Save back to file
     with open(input_json_path, "w") as f:
         json.dump(data_list, f)
+    print(f"Finished writing after {time.time() - write_start:.2f} seconds.")
+    avg_time = (avg_time * z + time.time() - current_time) / (z+1)
     print(f"==== Render step {z+1} completed in {time.time() - current_time:.2f} seconds. ====")
+
+print(f"==== All Renders Completed.====\nTotal Time: {avg_time*num_random_setup:.2f}\nAverage Time: {avg_time:.2f}")
