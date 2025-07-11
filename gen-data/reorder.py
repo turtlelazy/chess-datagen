@@ -289,7 +289,7 @@ for i in range(N):
     bproc.camera.add_camera_pose(cam_pose)
 
 # Render for each randomized position
-trn_val_tst_split = [6,2,2]
+trn_val_tst_split = [6, 2, 2]
 gcd = math.gcd(math.gcd(trn_val_tst_split[0], trn_val_tst_split[1]), trn_val_tst_split[2])
 trn_val_tst_split = [x // gcd for x in trn_val_tst_split]
 split_map = {0: 'train', 1: 'val', 2: 'test'}
