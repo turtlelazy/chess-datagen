@@ -147,7 +147,7 @@ def allowed_squares_for(piece, free_squares):
 
     return choices
 
-def randomizePositions():
+def randomizePositions(chance=0.5):
     free_squares = set(positionsDict.keys())
     assignment = {}
 
@@ -155,13 +155,13 @@ def randomizePositions():
 
     # if piece were chosen, add it to pieces otherwise make it disappear
     for p in pieceList:
-        if random.random() > random.random() or 'King' in p.name_: # each piece has a 50% chance of selection, but kings are always selected
+        if random.random() > chance or 'King' in p.name_: # each piece has a 50% chance of selection, but kings are always selected
             pieces.append(p)
         else:
             bpy.data.objects[p.name_].hide_viewport = True
             bpy.data.objects[p.name_].hide_render = True
-            
-    #shuffe the pieces
+
+    #shuffle the pieces
     random.shuffle(pieces)
 
     for p in pieces:
@@ -178,6 +178,14 @@ def randomizePositions():
 
     return assignment
 
+def reset():
+    #reset the pieces
+    for name,square in pieceToSquareDict.items():
+        x,y = positionsDict[square]
+        bpy.data.objects[name].location.x  = x
+        bpy.data.objects[name].location.y  = y
+        bpy.data.objects[name].hide_viewport = False
+        bpy.data.objects[name].hide_render = False
 FILES = 'ABCDEFGH'
 RANKS = '12345678'
 
@@ -199,13 +207,7 @@ for piece, square in pieceToSquareDict.items():
     home_tile_color = 'Black' if ((FILES.index(square[0]) + RANKS.index(square[1])) % 2 == 0) else 'White'
     pieceList.append(Piece(name,kind,color,initial_position,home_tile_color))
 
-#reset the pieces
-for name,square in pieceToSquareDict.items():
-    x,y = positionsDict[square]
-    bpy.data.objects[name].location.x  = x
-    bpy.data.objects[name].location.y  = y
-    bpy.data.objects[name].hide_viewport = False
-    bpy.data.objects[name].hide_render = False
+reset()
 
 # Labeling for COCO annotations
 
@@ -295,6 +297,7 @@ split_map = {0: 'train', 1: 'val', 2: 'test'}
 for z in range(num_random_setup):
     print(f"==== Render step {z+1}/{num_random_setup}... ====")
     current_time = time.time()
+    
     # Randomly shuffle the pieceList to create a new random setup
     # Determine which split this iteration belongs to (0=train, 1=val, 2=test)
 
@@ -310,7 +313,12 @@ for z in range(num_random_setup):
         split_idx = 2
 
     dir_pre = split_map[split_idx]
-    placement = randomizePositions()
+    placement = randomizePositions(
+        math.sqrt((num_random_setup - z) / num_random_setup) # Randomize positions with a decreasing chance of randomization
+    )
+
+    reset()
+
     # placement is now a dict mapping (EX: 'BlackPawn3' → 'E5')
     for name, square in placement.items():
         x,y = positionsDict[square]
@@ -329,7 +337,7 @@ for z in range(num_random_setup):
         colors=data["colors"], # type: ignore
         color_file_format="PNG",
         append_to_existing_output=True,  # <-- important!
-    ) 
+    )
     # THE OUTPUT OF WRITE COCO WAS MODIFIED TO RETURN THE IMAGE PATHS; ENSURE THIS IS DONE IN FUTURE CODE REVISIONS
 
     input_json_path = f'{output_path}/{dir_pre}/board_placements.json'
