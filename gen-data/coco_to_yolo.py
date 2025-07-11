@@ -88,7 +88,9 @@ def convert_bproc_coco_2_yolo(
 
 if __name__ == "__main__":
     if len(sys.argv) > 2:
-        parser = argparse.ArgumentParser(description="Convert COCO to YOLO format.")
+        parser = argparse.ArgumentParser(
+            description="Convert COCO to YOLO format."
+        )
         parser.add_argument(
             '--input',
             type=str, required=True,

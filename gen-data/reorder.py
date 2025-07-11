@@ -13,8 +13,20 @@ import json
 import os
 import math
 import datetime
-# Init BlenderProc and Optimize
+# Init BlenderProc and Optimize Your Settings
+# Using magical numbers found online
+# https://blenderartists.org/t/options-to-speed-up-a-render/1515328
 bproc.init()
+bproc.renderer.set_cpu_threads(0)
+bproc.renderer.set_render_devices(
+    use_only_cpu=False,
+    desired_gpu_device_type="OPTIX",
+    desired_gpu_ids=0
+)
+bproc.renderer.set_noise_threshold(0.1)
+bproc.renderer.set_max_amount_of_samples(128)
+bproc.renderer.set_denoiser("OPTIX")
+bproc.renderer.set_light_bounces(3,3,4,4,12,8,0)
 
 # Load your scene
 loaded = bproc.loader.load_blend("ChessBoard.blend")
@@ -155,7 +167,7 @@ def randomizePositions(chance=0.5):
 
     # if piece were chosen, add it to pieces otherwise make it disappear
     for p in pieceList:
-        if random.random() > chance or 'King' in p.name_: # each piece has a 50% chance of selection, but kings are always selected
+        if random.random() < chance or 'King' in p.name_: # each piece has a 50% chance of selection, but kings are always selected
             pieces.append(p)
         else:
             bpy.data.objects[p.name_].hide_viewport = True
@@ -167,6 +179,9 @@ def randomizePositions(chance=0.5):
     for p in pieces:
         legal = allowed_squares_for(p, free_squares)
         if not legal:
+            print(f"WARNING: No legal square left for {p.name_}!")
+            bpy.data.objects[p.name_].hide_viewport = True
+            bpy.data.objects[p.name_].hide_render = True
             continue
             #there are no bugs, only features
             raise RuntimeError(f"No legal square left for {p.name_}!")
@@ -261,8 +276,8 @@ bproc.renderer.set_output_format(enable_transparency=True)
 # GPT Soup to create a fibonacci sphere for camera positions
 # This will create a set of camera positions that are evenly distributed around the sphere
   # Distance from origin
-N = 200    # Number of cameras
-num_random_setup = 100  # Number of random setups to generate
+N = 10    # Number of cameras
+num_random_setup = 200  # Number of random setups to generate
 print(f"Generating {num_random_setup} random setups with {N} camera positions each...")
 # Golden angle in radians
 golden_angle = np.pi * (3 - np.sqrt(5))
@@ -297,7 +312,16 @@ split_map = {0: 'train', 1: 'val', 2: 'test'}
 for z in range(num_random_setup):
     print(f"==== Render step {z+1}/{num_random_setup}... ====")
     current_time = time.time()
-    
+
+    light.set_location(
+        [
+            random.uniform(-2.0, 2.0),
+            random.uniform(-2.0, 2.0),
+            random.uniform(0, 2.5)
+        ]
+    )  # Light above the chessboard
+
+    light.set_energy(random.uniform(250, 1250))
     # Randomly shuffle the pieceList to create a new random setup
     # Determine which split this iteration belongs to (0=train, 1=val, 2=test)
 
@@ -314,9 +338,11 @@ for z in range(num_random_setup):
 
     dir_pre = split_map[split_idx]
     placement = randomizePositions(
-        math.sqrt((num_random_setup - z) / num_random_setup) # Randomize positions with a decreasing chance of randomization
+        math.sqrt((num_random_setup - z) / num_random_setup)
     )
-
+    # Randomize positions with a decreasing chance of randomization
+    # NOTE: This does JACK; if you want acc rep take from online datasets
+    # TODO: Pull large amts of data from an api and scrape
     reset()
 
     # placement is now a dict mapping (EX: 'BlackPawn3' → 'E5')
