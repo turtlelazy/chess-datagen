@@ -27,4 +27,4 @@ def remove_class_13_from_labels(folder_path):
 base_dir = "PATH GOES HERE"
 splts = ["test", "val", "test"]
 for s in splts:
-    remove_class_13_from_labels(f"07_11_BACKUP/labels/{s}")
+    remove_class_13_from_labels(f"{base_dir}/labels/{s}")
