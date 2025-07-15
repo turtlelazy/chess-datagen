@@ -1,5 +1,6 @@
 import blenderproc as bproc  # On version 2.8.0
 
+import csv
 import random
 import time
 import re
@@ -87,42 +88,159 @@ positionsDict = {
     'H6': (0.85046, 0.372720),
     'H7': (0.85046, 0.622978),
     'H8': (0.85046, 0.873236),
+    'None' : (1,1)
 }
 
 pieceToSquareDict = {
-    'BlackRook1':   'A1',
-    'BlackKnight1': 'B1',
-    'BlackBishop1': 'C1',
-    'BlackQueen1':  'D1',
-    'BlackKing1':   'E1',
-    'BlackBishop2': 'F1',
-    'BlackKnight2': 'G1',
-    'BlackRook2':   'H1',
-    'BlackPawn1':   'A2',
-    'BlackPawn2':   'B2',
-    'BlackPawn3':   'C2',
-    'BlackPawn4':   'D2',
-    'BlackPawn5':   'E2',
-    'BlackPawn6':   'F2',
-    'BlackPawn7':   'G2',
-    'BlackPawn8':   'H2',
-    'WhiteRook1':   'A8',
-    'WhiteKnight1': 'B8',
-    'WhiteBishop1': 'C8',
-    'WhiteQueen1':  'D8',
-    'WhiteKing1':   'E8',
-    'WhiteBishop2': 'F8',
-    'WhiteKnight2': 'G8',
-    'WhiteRook2':   'H8',
-    'WhitePawn1':   'A7',
-    'WhitePawn2':   'B7',
-    'WhitePawn3':   'C7',
-    'WhitePawn4':   'D7',
-    'WhitePawn5':   'E7',
-    'WhitePawn6':   'F7',
-    'WhitePawn7':   'G7',
-    'WhitePawn8':   'H7',
+    'BlackRook1':   'A8',
+    'BlackRook2':   'H8',
+    'BlackRook3':   'None',
+    'BlackRook4':   'None',
+    'BlackRook5':   'None',
+    'BlackRook6':   'None',
+    'BlackRook7':   'None',
+    'BlackRook8':   'None',
+    'BlackRook9':   'None',
+    'BlackRook10':  'None',
+
+    'BlackKnight1': 'B8',
+    'BlackKnight2': 'G8',
+    'BlackKnight3': 'None',
+    'BlackKnight4': 'None',
+    'BlackKnight5': 'None',
+    'BlackKnight6': 'None',
+    'BlackKnight7': 'None',
+    'BlackKnight8': 'None',
+    'BlackKnight9': 'None',
+    'BlackKnight10':'None',
+
+    'BlackBishop1': 'C8',
+    'BlackBishop2': 'E8',
+    'BlackBishop3': 'None',
+    'BlackBishop4': 'None',
+    'BlackBishop5': 'None',
+    'BlackBishop6': 'None',
+    'BlackBishop7': 'None',
+    'BlackBishop8': 'None',
+    'BlackBishop9': 'None',
+    'BlackBishop10':'None',
+
+    'BlackQueen1':  'D8',
+    'BlackQueen2':  'None',
+    'BlackQueen3':  'None',
+    'BlackQueen4':  'None',
+    'BlackQueen5':  'None',
+    'BlackQueen6':  'None',
+    'BlackQueen7':  'None',
+    'BlackQueen8':  'None',
+    'BlackQueen9':  'None',
+
+    'BlackKing1':   'E8',
+
+    'BlackPawn1':   'A7',
+    'BlackPawn2':   'B7',
+    'BlackPawn3':   'C7',
+    'BlackPawn4':   'D7',
+    'BlackPawn5':   'E7',
+    'BlackPawn6':   'F7',
+    'BlackPawn7':   'G7',
+    'BlackPawn8':   'H7',
+
+    'WhiteRook1':   'A1',
+    'WhiteRook2':   'H1',
+    'WhiteRook3':   'None',
+    'WhiteRook4':   'None',
+    'WhiteRook5':   'None',
+    'WhiteRook6':   'None',
+    'WhiteRook7':   'None',
+    'WhiteRook8':   'None',
+    'WhiteRook9':   'None',
+    'WhiteRook10':  'None',
+
+    'WhiteKnight1': 'B1',
+    'WhiteKnight2': 'G1',
+    'WhiteKnight3': 'None',
+    'WhiteKnight4': 'None',
+    'WhiteKnight5': 'None',
+    'WhiteKnight6': 'None',
+    'WhiteKnight7': 'None',
+    'WhiteKnight8': 'None',
+    'WhiteKnight9': 'None',
+    'WhiteKnight10':'None',
+
+    'WhiteBishop1': 'C1',
+    'WhiteBishop2': 'F1',
+    'WhiteBishop3': 'None',
+    'WhiteBishop4': 'None',
+    'WhiteBishop5': 'None',
+    'WhiteBishop6': 'None',
+    'WhiteBishop7': 'None',
+    'WhiteBishop8': 'None',
+    'WhiteBishop9': 'None',
+    'WhiteBishop10':'None',
+
+    'WhiteQueen1':  'D1',
+    'WhiteQueen2':  'None',
+    'WhiteQueen3':  'None',
+    'WhiteQueen4':  'None',
+    'WhiteQueen5':  'None',
+    'WhiteQueen6':  'None',
+    'WhiteQueen7':  'None',
+    'WhiteQueen8':  'None',
+    'WhiteQueen9':  'None',
+    'WhiteQueen10': 'None',
+
+    'WhiteKing1':   'E1',
+
+    'WhitePawn1':   'A2',
+    'WhitePawn2':   'B2',
+    'WhitePawn3':   'C2',
+    'WhitePawn4':   'D2',
+    'WhitePawn5':   'E2',
+    'WhitePawn6':   'F2',
+    'WhitePawn7':   'G2',
+    'WhitePawn8':   'H2',
 }
+
+def parse_fen(fen):
+    files = 'abcdefgh'
+    ranks = fen.split()[0].split('/')
+    # print(ranks)
+    piecePositions = {
+        'BlackPawn': [], 'WhitePawn': [],
+        'BlackRook': [], 'WhiteRook': [],
+        'BlackKnight': [], 'WhiteKnight': [],
+        'BlackBishop': [], 'WhiteBishop': [],
+        'BlackQueen': [], 'WhiteQueen': [],
+        'BlackKing': [],  'WhiteKing': [],
+    }
+    symbolToType = {
+        'p': 'Pawn', 'r': 'Rook', 'n': 'Knight',
+        'b': 'Bishop','q': 'Queen','k': 'King'
+    }
+    for rank_idx, rank in enumerate(ranks):
+        file_idx = 0
+        for ch in rank:
+            if ch.isdigit():
+                file_idx += int(ch)
+            else:
+                color = 'White' if ch.isupper() else 'Black'
+                ptype = symbolToType[ch.lower()]
+                square = files[file_idx] + str(8 - rank_idx)
+                piecePositions[f'{color}{ptype}'].append(square)
+                file_idx += 1
+    return piecePositions
+
+# update my dict based on new positions
+def update_dict_from_positions(d, positions):
+    for k in d:
+        d[k] = 'None'
+    for ptype, squares in positions.items():
+        for i, sq in enumerate(squares, start=1):
+            key = f'{ptype}{i}'
+            d[key] = sq
+    return d
+
 class Piece:
     def __init__(self,name, kind, color, initial_position, home_tile_color):
         self.name_= name
@@ -210,22 +328,21 @@ for name,square in pieceToSquareDict.items():
 # Labeling for COCO annotations
 
 CATEGORY_NAME_TO_ID = {
-    "WhitePawn": 1,
-    "WhiteRook": 2,
-    "WhiteKnight": 3,
-    "WhiteBishop": 4,
-    "WhiteQueen": 5,
-    "WhiteKing": 6,
+    "WhitePawn": 0,
+    "WhiteRook": 1,
+    "WhiteKnight": 2,
+    "WhiteBishop": 3,
+    "WhiteQueen": 4,
+    "WhiteKing": 5,
 
-    "BlackPawn": 7,
-    "BlackRook": 8,
-    "BlackKnight": 9,
-    "BlackBishop": 10,
-    "BlackQueen": 11,
-    "BlackKing": 12,
+    "BlackPawn": 6,
+    "BlackRook": 7,
+    "BlackKnight": 8,
+    "BlackBishop": 9,
+    "BlackQueen": 10,
+    "BlackKing": 11,
 
-    "Board": 13,
-    "Cylinder": 14
+    "Board": 12
 }
 
 def get_base_name(name):
@@ -292,6 +409,12 @@ gcd = math.gcd(math.gcd(trn_val_tst_split[0], trn_val_tst_split[1]), trn_val_tst
 trn_val_tst_split = [x // gcd for x in trn_val_tst_split]
 split_map = {0: 'train', 1: 'val', 2: 'test'}
 
+# Set up csv reading
+csv_file = open('positions.csv', newline='')
+reader = csv.reader(csv_file)
+next(reader, None)        
+fen_rows = iter(reader) 
+
 for z in range(num_random_setup):
     print(f"==== Render step {z+1}/{num_random_setup}... ====")
     current_time = time.time()
@@ -310,12 +433,23 @@ for z in range(num_random_setup):
         split_idx = 2
 
     dir_pre = split_map[split_idx]
-    placement = randomizePositions()
-    # placement is now a dict mapping (EX: 'BlackPawn3' → 'E5')
+
+    try:
+        row = next(fen_rows)
+    except StopIteration:
+        print("No more FEN rows—stopping early.")
+        break
+
+    # parse + update data based off stream
+    fen = row[0]
+    pos = parse_fen(fen)
+    update_dict_from_positions(pieceToSquareDict, pos)
+    placement = pieceToSquareDict.copy()
+
     for name, square in placement.items():
-        x,y = positionsDict[square]
-        bpy.data.objects[name].location.x  = x
-        bpy.data.objects[name].location.y  = y
+        x, y = positionsDict[square]
+        bpy.data.objects[name].location.x = x
+        bpy.data.objects[name].location.y = y
 
     # Render segmentation data and produce instance attribute maps
     seg_data = bproc.renderer.render_segmap(map_by=["instance", "class", "name"])
