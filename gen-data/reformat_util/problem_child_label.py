@@ -2,6 +2,7 @@
 
 
 import os
+import sys
 
 def remove_class_13_from_labels(folder_path):
     for filename in os.listdir(folder_path):
@@ -24,7 +25,11 @@ def remove_class_13_from_labels(folder_path):
 
 
 # Example usage
-base_dir = "PATH GOES HERE"
-splts = ["test", "val", "test"]
+if len(sys.argv) < 2:
+    print("Usage: python problem_child_label.py <base_dir>")
+    sys.exit(1)
+
+base_dir = sys.argv[1]
+splts = ["test", "val", "train"]
 for s in splts:
     remove_class_13_from_labels(f"{base_dir}/labels/{s}")
