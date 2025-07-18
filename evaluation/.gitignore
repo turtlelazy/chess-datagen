@@ -1,0 +1,9 @@
+coco_data*/
+env
+coco_converted*
+__pycache__
+YOLO*
+data
+logs
+*run_output*
+positions.csv

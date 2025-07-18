@@ -403,7 +403,7 @@ print("K MATRIX", bproc.camera.get_intrinsics_as_K_matrix())
 # GPT Soup to create a fibonacci sphere for camera positions
 # This will create a set of camera positions that are evenly distributed around the sphere
   # Distance from origin
-N = 50    # Number of cameras
+N = 10    # Number of cameras
 num_random_setup = 1  # Number of random setups to generate
 print(f"Generating {num_random_setup} random setups with {N} camera positions each...")
 # Golden angle in radians
@@ -525,8 +525,9 @@ for z in range(num_random_setup):
     for i, path in enumerate(image_paths):
         if path in data_list.keys():
             print(f"WARNING: File path '{path}' is already in the board_placements.json -> overwriting entry.")
-        data_list[path] = placement.copy()
-        data_list[path]["cam"] = dict(camera_info)
+        data_list[path] = {}
+        data_list[path]["board"] = fen
+        data_list[path]["cam"] = dict(camera_info[i])
         print(path, camera_info[i])
         print(path, data_list[path])
 
