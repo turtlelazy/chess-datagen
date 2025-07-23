@@ -91,24 +91,20 @@ def warp_to_square(image, pts, output_size=256):
 
 def color_grid_on_square(square_img, grid_size=8, alpha=20):
     h, w = square_img.shape[:2]
-    cell_w = w // grid_size
-    cell_h = h // grid_size
+    cell_w = int(w // grid_size)
+    cell_h = int(h // grid_size)
 
     # Draw checkerboard over copy
     colored = square_img.copy()
     for y in range(grid_size):
         for x in range(grid_size):
             color = (x * alpha, y * alpha, 0)
-            cv2.rectangle(
-                colored,
-                (x * cell_w, y * cell_h),
-                ((x + 1) * cell_w, (y + 1) * cell_h),
-                color,
-                thickness=-1
-            )
+            for i in range(y * cell_h, (y + 1) * cell_h):
+                for j in range(x * cell_w, (x + 1) * cell_w):
+                    colored[i, j] = color
     return colored
 
-def warp_square_back(original_image, modified_square, src_quad, square_size=256):
+def warp_square_back(original_image, modified_square, src_quad, square_size=256, alpha=20):
     src_quad = np.array(src_quad, dtype="float32")
     dst_square = np.array([
         [0, 0],
@@ -126,6 +122,14 @@ def warp_square_back(original_image, modified_square, src_quad, square_size=256)
     mask = np.any(warped_back != [0, 0, 0], axis=-1)
     output = np.zeros_like(original_image)
     output[mask] = warped_back[mask]
+
+    # Go through each pixel and check for divisibility by alpha, round if not
+    for i in range(output.shape[0]):
+        for j in range(output.shape[1]):
+            if mask[i, j]:
+                for c in range(3):
+                    if output[i, j, c] % alpha != 0:
+                        output[i, j, c] = int(round(output[i, j, c] / alpha) * alpha)
 
     return output
 
