@@ -23,17 +23,28 @@ def intersect_union_score(img1, img2):
     colors = set(map(tuple, np.unique(flat1, axis=0))) | set(map(tuple, np.unique(flat2, axis=0)))
     print(len(colors))
     iou_scores = {}
-    # for color in colors:
-    #     mask1 = np.all(flat1 == color, axis=-1) if img1.ndim == 3 else flat1 == color
-    #     mask2 = np.all(flat2 == color, axis=-1) if img2.ndim == 3 else flat2 == color
-    #     intersection = np.logical_and(mask1, mask2).sum()
-    #     union = np.logical_or(mask1, mask2).sum()
-    #     iou = intersection / union if union > 0 else 0.0
-    #     iou_scores[color] = iou
+    for color in colors:
+        mask1 = np.all(flat1 == color, axis=-1) if img1.ndim == 3 else flat1 == color
+        mask2 = np.all(flat2 == color, axis=-1) if img2.ndim == 3 else flat2 == color
+        intersection = np.logical_and(mask1, mask2).sum()
+        union = np.logical_or(mask1, mask2).sum()
+        iou = intersection / union if union > 0 else 0.0
+        iou_scores[color] = iou
     return iou_scores
 
+def iou_to_score(iou_scores):
+    """
+    Converts IoU scores to a single score.
+    Args:
+        iou_scores: dict mapping color (as tuple) to IoU score
+    Returns:
+        float: average IoU score across all colors
+    """
+    if not iou_scores:
+        return 0.0
+    return sum(iou_scores.values()) / len(iou_scores)
 
-def test_coco(dir, method, vis=False):
+def test_coco(dir, method, metric=iou_to_score, vis=False):
     board_json = open(f"{dir}/board_placements.json")
     board_json = json.load(board_json)
     i = 0
@@ -65,18 +76,35 @@ def test_coco(dir, method, vis=False):
 
         gt_pts = gt.get_projected_rectangle_corners(x_l, y_l, z_l, R, T, K)
         predicted_pts = method(cur_img_dir)
+        rotated_predicted_pts = []
         if predicted_pts is None:
             predicted_pts = []
+        else:
+            rotated_predicted_pts = [np.roll(predicted_pts, -i, axis=0) for i in range(len(predicted_pts))]
 
+        print(predicted_pts)
+        print(rotated_predicted_pts)
+        best_predicted_pts = None
         gt_mask = gt.get_board_mask(gt_pts, curr_image)
-        try:
-            predicted_mask = gt.get_board_mask(predicted_pts, curr_image)
-        except Exception as e:
-            predicted_mask = np.zeros_like(gt_mask)
+        predicted_mask = np.zeros_like(gt_mask)
+        best_score = 0
+        for predicted in rotated_predicted_pts:
+            print(predicted)
+            try:
+                curr_predicted_mask = gt.get_board_mask(predicted, curr_image)
+            except Exception as e:
+                curr_predicted_mask = np.zeros_like(gt_mask)
 
-        iou_scores = intersect_union_score(gt_mask, predicted_mask)
-        print(f"Image: {key}, IoU Scores: {iou_scores}")
+            iou_scores = intersect_union_score(gt_mask, curr_predicted_mask)
+            score = metric(iou_scores)
+            print(f"Image: {key}, Score: {score}")
 
+            if score > best_score:
+                best_score = score
+                best_predicted_pts = predicted
+                predicted_mask = curr_predicted_mask
+    
+            
         if vis:
             print(f"Image: {key}, GT Points: {gt_pts}, Predicted Points: {predicted_pts}")
             print(f"GT Mask shape: {gt_mask.shape}, Predicted Mask shape: {predicted_mask.shape}")
@@ -102,4 +130,4 @@ if  __name__ == "__main__":
     from ChessBoardDetector.Sams_X_corner.FindChessboards import processSingleCustomWrapper
 
     dir = "coco_data_2025_07_18__01_55_08/train"
-    test_coco(dir, processSingleCustomWrapper, vis=True)
+    test_coco(dir, processSingleCustomWrapper, vis=False)
