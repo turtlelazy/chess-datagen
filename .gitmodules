@@ -1,0 +1,3 @@
+[submodule "evaluation/ChessBoardDetector"]
+	path = evaluation/ChessBoardDetector
+	url = git@github.com:TiewonHenderson/ChessBoardDetector.git

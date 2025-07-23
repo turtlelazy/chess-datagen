@@ -89,7 +89,7 @@ def warp_to_square(image, pts, output_size=256):
 
     return warped, M, dst  # return matrix and dst in case needed later
 
-def color_grid_on_square(square_img, grid_size=8):
+def color_grid_on_square(square_img, grid_size=8, alpha=20):
     h, w = square_img.shape[:2]
     cell_w = w // grid_size
     cell_h = h // grid_size
@@ -98,7 +98,7 @@ def color_grid_on_square(square_img, grid_size=8):
     colored = square_img.copy()
     for y in range(grid_size):
         for x in range(grid_size):
-            color = (x, y, 0)
+            color = (x * alpha, y * alpha, 0)
             cv2.rectangle(
                 colored,
                 (x * cell_w, y * cell_h),
@@ -129,9 +129,17 @@ def warp_square_back(original_image, modified_square, src_quad, square_size=256)
 
     return output
 
+def get_board_mask(projected_pts, inp_image, square_size=256):
+    empty_square = np.zeros((square_size, square_size, 3), dtype=np.uint8)
+    # Step 2: Color the square
+    colored_square = color_grid_on_square(empty_square, grid_size=8)
+
+    # Step 3: Warp back to original
+    final_result = warp_square_back(inp_image, colored_square, projected_pts, square_size=256)
+    return final_result
 
 if __name__ == "__main__":
-    image = cv2.imread("000016.png")
+    image = cv2.imread("coco_data_2025_07_18__01_55_08/train/images/000000.png")
 
     # Camera intrinsics
     K = np.array([
@@ -181,11 +189,13 @@ if __name__ == "__main__":
     # Step 3: Warp back to original
     final_result = warp_square_back(output_img, colored_square, projected_pts, square_size=256)
 
-    # Show result
+
+    gt_mask = get_board_mask(projected_pts, output_img)
     # Show result
     cv2.imshow("Projected Corners", output_img)
     cv2.imshow("Perspective Transform", warped_square)
     cv2.imshow("Final Overlay", final_result)
+    cv2.imshow("Ground Truth Mask", gt_mask)
 
     cv2.waitKey(0)
     cv2.destroyAllWindows()
