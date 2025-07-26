@@ -7,3 +7,6 @@ data
 logs
 *run_output*
 positions.csv
+.DS_Store
+board_placements.json
+coco_annotations.json
