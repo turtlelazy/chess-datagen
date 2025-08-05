@@ -7,3 +7,4 @@ data
 logs
 *run_output*
 positions.csv
+.DS_Store

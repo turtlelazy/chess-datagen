@@ -8,3 +8,6 @@ logs
 *run_output*
 positions.csv
 *.zip
+.DS_Store
+board_placements.json
+coco_annotations.json
