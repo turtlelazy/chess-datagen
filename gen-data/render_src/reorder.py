@@ -492,7 +492,6 @@ for z in range(num_random_setup):
         x, y = positionsDict[square.upper()]
         bpy.data.objects[name].location.x = x
         bpy.data.objects[name].location.y = y
-        bpy.data.objects[name].location.z = -0.000969 
 
     # Render segmentation data and produce instance attribute maps
     seg_data = bproc.renderer.render_segmap(map_by=["instance", "class", "name"])
