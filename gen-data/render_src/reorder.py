@@ -249,12 +249,19 @@ def parse_fen(fen):
 
 # update my dict based on new positions
 def update_dict_from_positions(d, positions):
+    reset()
     for k in d:
         d[k] = 'None'
+    bpy.data.objects["BlackKing1"].hide_viewport = False
+    bpy.data.objects["BlackKing1"].hide_render = False
+    bpy.data.objects["WhiteKing1"].hide_viewport = False
+    bpy.data.objects["WhiteKing1"].hide_render = False
     for ptype, squares in positions.items():
         for i, sq in enumerate(squares, start=1):
             key = f'{ptype}{i}'
             d[key] = sq
+            bpy.data.objects[key].hide_viewport = False
+            bpy.data.objects[key].hide_render = False
     return d
 
 class Piece:
@@ -323,8 +330,8 @@ def reset():
         x,y = positionsDict[square.upper()]
         bpy.data.objects[name].location.x  = x
         bpy.data.objects[name].location.y  = y
-        bpy.data.objects[name].hide_viewport = False
-        bpy.data.objects[name].hide_render = False
+        bpy.data.objects[name].hide_viewport = True
+        bpy.data.objects[name].hide_render = True
 FILES = 'ABCDEFGH'
 RANKS = '12345678'
 
