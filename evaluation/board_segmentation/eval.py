@@ -79,7 +79,7 @@ def iou_to_score(iou_scores):
 
 def test_coco(dir, method, metric=iou_to_score, vis=False, backg = True):
     results = {}
-    
+
     board_json = open(f"{dir}/board_placements.json")
     board_json = json.load(board_json)
     i = 0
@@ -87,10 +87,12 @@ def test_coco(dir, method, metric=iou_to_score, vis=False, backg = True):
     output_file = f"board_segmentation_results_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
     with open(output_file, 'a') as fw:
         fw.write("Image,Score\n")
-    
+
     for key, value in board_json.items():
         i += 1
         start_start = time.time()
+        # if key != "images/000156.png":
+        #     continue
         try:
 
             print(f"Processing Image: {key}")
@@ -142,7 +144,6 @@ def test_coco(dir, method, metric=iou_to_score, vis=False, backg = True):
 
             best_predicted_pts = None
             gt_mask = gt.get_board_mask(gt_pts, curr_image)
-            predicted_mask = np.zeros_like(gt_mask)
 
             try:
                 curr_predicted_mask = gt.get_board_mask(predicted_pts, curr_image)
@@ -155,16 +156,18 @@ def test_coco(dir, method, metric=iou_to_score, vis=False, backg = True):
             print()
             if vis:
                 print(f"Image: {key}, GT Points: {gt_pts}, Predicted Points: {predicted_pts}")
-                print(f"GT Mask shape: {gt_mask.shape}, Predicted Mask shape: {predicted_mask.shape}")
+                print(
+                    f"GT Mask shape: {gt_mask.shape}, Predicted Mask shape: {curr_predicted_mask.shape}"
+                )
                 for p in predicted_pts:
                     cv2.circle(curr_image, (int(round(p[0])), int(round(p[1]))), 8, (255, 0, 0), -1)
                 for p in gt_pts:
                     cv2.circle(curr_image, (int(round(p[0])), int(round(p[1]))), 8, (0, 255, 0), -1)
-            
+
                 print("Showing GT and Predicted Masks")
                 cv2.imshow("Original Image", curr_image)
                 cv2.imshow("GT Mask", gt_mask)
-                cv2.imshow("Predicted Mask", predicted_mask)
+                cv2.imshow("Predicted Mask", curr_predicted_mask)
                 cv2.waitKey(0)
                 cv2.destroyAllWindows()
         except Exception as e:
@@ -183,4 +186,4 @@ if  __name__ == "__main__":
 
     # dir = "coco_data_2025_07_18__01_55_08/train"
     dir = "../gen-data/render_src/coco_data_2025_07_22__23_40_11/train"
-    test_coco(dir, processSingleCustomWrapper, vis=False, backg=True)
+    test_coco(dir, processSingleCustomWrapper, vis=True, backg=True)

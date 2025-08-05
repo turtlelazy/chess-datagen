@@ -7,3 +7,4 @@ data
 logs
 *run_output*
 positions.csv
+*.zip

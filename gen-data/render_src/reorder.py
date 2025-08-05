@@ -354,7 +354,7 @@ reset()
 # Labeling for COCO annotations
 
 CATEGORY_NAME_TO_ID = {
-    "WhitePawn": 0,
+    "WhitePawn": 13,
     "WhiteRook": 1,
     "WhiteKnight": 2,
     "WhiteBishop": 3,
@@ -379,7 +379,7 @@ for obj in loaded:
     full_name = obj.get_name()
     
     base_name = get_base_name(full_name)
-
+    print(f"Processing object: {full_name} (base name: {base_name})")
     if base_name not in CATEGORY_NAME_TO_ID:
         print(f"WARNING: Unknown category name '{base_name}' for object '{full_name}'")
         continue
@@ -439,6 +439,8 @@ gcd = math.gcd(math.gcd(trn_val_tst_split[0], trn_val_tst_split[1]), trn_val_tst
 trn_val_tst_split = [x // gcd for x in trn_val_tst_split]
 split_map = {0: 'train', 1: 'val', 2: 'test'}
 
+fen_visited = set()
+
 # Set up csv reading
 csv_file = open('positions.csv', newline='')
 reader = csv.reader(csv_file)
@@ -482,6 +484,11 @@ for z in range(num_random_setup):
 
     # parse + update data based off stream
     fen = row[0]
+    if fen in fen_visited:
+        print(f"FEN {fen} already visited, skipping...")
+        continue
+    fen_visited.add(fen)
+
     pos = parse_fen(fen)
     update_dict_from_positions(pieceToSquareDict, pos)
     placement = pieceToSquareDict.copy()
@@ -498,6 +505,7 @@ for z in range(num_random_setup):
     # Render the scene
     data = bproc.renderer.render()
     # Write data to coco file
+    print("Writing data to COCO file...")
     write_start = time.time()
     image_paths = bproc.writer.write_coco_annotations(
         f'{output_path}/{dir_pre}',
