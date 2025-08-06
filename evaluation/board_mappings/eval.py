@@ -7,7 +7,8 @@ import cv2
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from tqdm import tqdm  # Install with: pip install tqdm
-
+import csv
+import datetime
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../data_map")))
 import use_board_GPT
 
@@ -46,17 +47,29 @@ if __name__ == "__main__":
     total_images = len(placement_json)
     total_passed = 0
 
-    with ThreadPoolExecutor() as executor:
-        futures = {
-            executor.submit(process_single_image, image_str, placement_json, annotation_json): image_str
-            for image_str in placement_json
-        }
+    # Output CSV path
+    csv_output_path = f"board_mapping_results_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
 
-        for future in tqdm(as_completed(futures), total=total_images, desc="Evaluating"):
-            try:
-                if future.result():
-                    total_passed += 1
-            except Exception as e:
-                print(f"[Error] Exception during processing: {e}")
+    # Open CSV writer
+    with open(csv_output_path, mode='w', newline='') as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(['file_name', 'passed'])  # header row
+
+        with ThreadPoolExecutor() as executor:
+            futures = {
+                executor.submit(process_single_image, image_str, placement_json, annotation_json): image_str
+                for image_str in placement_json
+            }
+
+            for future in tqdm(as_completed(futures), total=total_images, desc="Evaluating"):
+                image_str = futures[future]
+                try:
+                    result = future.result()
+                    writer.writerow([image_str, result])
+                    if result:
+                        total_passed += 1
+                except Exception as e:
+                    writer.writerow([image_str, "ERROR"])
+                    print(f"[Error] Exception during processing {image_str}: {e}")
 
     print(f"Total Images: {total_images}, Total Passed: {total_passed}, Accuracy: {total_passed / total_images * 100:.2f}%")
