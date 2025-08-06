@@ -22,11 +22,11 @@ def process_single_image(image_str, placement_json, annotation_json):
         all_rotations = use_board_GPT.rotate_fen_piece_layout(fen)
         for layout in all_rotations.values():
             if layout == original_fen:
-                return True
+                return True, fen, original_fen
     except Exception as e:
         print(f"[Error] Processing {image_str}: {e}")
-    
-    return False
+
+    return False, fen, original_fen
 
 
 if __name__ == "__main__":
@@ -53,7 +53,7 @@ if __name__ == "__main__":
     # Open CSV writer
     with open(csv_output_path, mode='w', newline='') as csvfile:
         writer = csv.writer(csvfile)
-        writer.writerow(['file_name', 'passed'])  # header row
+        writer.writerow(['file_name', 'passed', 'output_fen', 'original_fen'])  # header row
 
         with ThreadPoolExecutor() as executor:
             futures = {
@@ -64,12 +64,12 @@ if __name__ == "__main__":
             for future in tqdm(as_completed(futures), total=total_images, desc="Evaluating"):
                 image_str = futures[future]
                 try:
-                    result = future.result()
-                    writer.writerow([image_str, result])
+                    result, fen, original_fen = future.result()
+                    writer.writerow([image_str, result, fen, original_fen])
                     if result:
                         total_passed += 1
                 except Exception as e:
-                    writer.writerow([image_str, "ERROR"])
+                    writer.writerow([image_str, "ERROR", ""])
                     print(f"[Error] Exception during processing {image_str}: {e}")
 
     print(f"Total Images: {total_images}, Total Passed: {total_passed}, Accuracy: {total_passed / total_images * 100:.2f}%")

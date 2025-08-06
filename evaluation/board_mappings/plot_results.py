@@ -87,7 +87,7 @@ def plot_pass_rate_by_angle_bin(json_file, csv_file, output_file="pass_rate_by_a
         angle_data.append((img_name, angle))
 
     angle_df = pd.DataFrame(angle_data, columns=['file_name', 'Angle'])
-
+    print(angle_df)
     # Merge with score_df
     merged = score_df.merge(angle_df, on='file_name')
 
