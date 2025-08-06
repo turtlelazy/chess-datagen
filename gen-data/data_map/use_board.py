@@ -188,12 +188,71 @@ def warp_square_back(original_image, modified_square, src_quad, square_size=256)
 
     return output
 
-def piece_to_square(piece_bboxes):
+
+def dict_to_fen_placement(piece_map):
+
+    board = [['' for _ in range(8)] for _ in range(8)]
+    
+    for piece, squares in piece_map.items():
+        for sq in squares:
+            file = ord(sq[0]) - ord('a')   
+            rank = int(sq[1])               
+            if 0 <= file < 8 and 1 <= rank <= 8:
+                board[rank-1][file] = piece
+    
+    rows = []
+    for r in range(7, -1, -1):
+        empty = 0
+        fen_row = ''
+        for f in range(8):
+            c = board[r][f]
+            if c == '':
+                empty += 1
+            else:
+                if empty:
+                    fen_row += str(empty)
+                    empty = 0
+                fen_row += c
+        if empty:
+            fen_row += str(empty)
+        rows.append(fen_row)
+    
+    return '/'.join(rows)
+
+
+def piece_to_square(piece_bboxes,M):
     square_size = 256
     cell_size   = square_size / 8.0
     files       = "abcdefgh"
+    
+    board = [['' for _ in range(8)] for _ in range(8)]
+    
+    
+    def name_to_fen(piece_name):
+        name = piece_name.lower()
+        if 'white' in name:
+            color = 'white'
+        elif 'black' in name:
+            color = 'black'
+        
+        for ptype in ('pawn','knight','bishop','rook','queen','king'):
+            if ptype in name:
+                break
 
+        base = {
+            'pawn':   'P',
+            'knight': 'N',
+            'bishop': 'B',
+            'rook':   'R',
+            'queen':  'Q',
+            'king':   'K'
+        }[ptype]
+        return base if color == 'white' else base.lower()
+    
+    #print("------------\n", piece_bboxes.items())
+    piece_to_fen = defaultdict(list)
     for piece_name, bboxes in piece_bboxes.items():
+        code = name_to_fen(piece_name)
         for bbox in bboxes:
             # get the point in the original image
             x, y, w, h = bbox
@@ -217,61 +276,68 @@ def piece_to_square(piece_bboxes):
 
             # make square name
             square = f"{files[file_idx]}{rank_idx+1}"
-        
-
-            print(f"{piece_name} @ ({cx:.1f},{cy:.1f}) -> warped ({u:.1f},{v:.1f}) -> square {square}")
-
-imgNum = 9
-
-image = cv2.imread(f"gen-data/data_map/images/00000{imgNum}.png")
-
-board_bbox, piece_bboxes = getBbox(imgNum)
-
-camera_position, rot = getCameraExtrinsics(f"00000{imgNum}")
-
-R_c2w = look_at_rotation(camera_position)
-R, T = rot, camera_position
-K = np.array([
-    [888.88909234, 0, 319.5],
-    [0, 888.88909234, 239.5],
-    [0, 0, 1]
-])
-
-x_l, y_l, z_l = 2, 2, 0
-
-projected_pts = get_projected_rectangle_corners(x_l, y_l, z_l, R, T, K)
-
-print("Projected points:", projected_pts)
-
-output_img = image.copy()
-for p in projected_pts:
-    cv2.circle(output_img, (int(round(p[0])), int(round(p[1]))), 8, (255, 0, 0), -1)
-
-for name, bboxes in piece_bboxes.items():
-    for x,y,cx,cy in bboxes:
-        cv2.circle(output_img, (int(x + (cx*2)//4) , int(y + (cy*3.99)//4)), 6, (50, 255, 177), -1)
-
-origin_world = np.array([[0, 0, 0]])
-origin_cam = (R @ (origin_world - T).T).T
-origin_proj = (K @ origin_cam.T).T
-origin_img = origin_proj[:, :2] / origin_cam[:, 2][:, np.newaxis]
-origin_pt = origin_img[0]
+            piece_to_fen[code].append(square)
+    #print("----")
+    #print(piece_to_fen)
+    return dict_to_fen_placement(piece_to_fen)
 
 
-# warp board
-warped_square, M, dst = warp_to_square(output_img, projected_pts, output_size=256)
+def main():
+    imgNum = 7
 
-piece_to_square(piece_bboxes)
+    image = cv2.imread(f"gen-data/data_map/images/00000{imgNum}.png")
 
-# Color
-# colored_square = color_grid_on_square(warped_square, grid_size=8)
-# warp back to original
-# final_result = warp_square_back(output_img, colored_square, projected_pts, square_size=256)
+    board_bbox, piece_bboxes = getBbox(imgNum)
+
+    camera_position, rot = getCameraExtrinsics(f"00000{imgNum}")
+
+    R_c2w = look_at_rotation(camera_position)
+    R, T = rot, camera_position
+    K = np.array([
+        [888.88909234, 0, 319.5],
+        [0, 888.88909234, 239.5],
+        [0, 0, 1]
+    ])
+
+    x_l, y_l, z_l = 2, 2, 0
+
+    projected_pts = get_projected_rectangle_corners(x_l, y_l, z_l, R, T, K)
+
+    print("Projected points:", projected_pts)
+
+    output_img = image.copy()
+    for p in projected_pts:
+        cv2.circle(output_img, (int(round(p[0])), int(round(p[1]))), 8, (255, 0, 0), -1)
+
+    for name, bboxes in piece_bboxes.items():
+        for x,y,cx,cy in bboxes:
+            cv2.circle(output_img, (int(x + (cx*2)//4) , int(y + (cy*3.99)//4)), 6, (50, 255, 177), -1)
+
+    origin_world = np.array([[0, 0, 0]])
+    origin_cam = (R @ (origin_world - T).T).T
+    origin_proj = (K @ origin_cam.T).T
+    origin_img = origin_proj[:, :2] / origin_cam[:, 2][:, np.newaxis]
+    origin_pt = origin_img[0]
 
 
-cv2.imshow("Projected Corners", output_img)
-cv2.imshow("Perspective Transform", warped_square)
-#cv2.imshow("Final Overlay", final_result)
+    # warp board
+    warped_square, M, dst = warp_to_square(output_img, projected_pts, output_size=256)
 
-cv2.waitKey(0)
-cv2.destroyAllWindows()
+
+    # Color
+    # colored_square = color_grid_on_square(warped_square, grid_size=8)
+    # warp back to original
+    # final_result = warp_square_back(output_img, colored_square, projected_pts, square_size=256)
+
+
+    # cv2.imshow("Projected Corners", output_img)
+    # cv2.imshow("Perspective Transform", warped_square)
+    #cv2.imshow("Final Overlay", final_result)
+    fen = piece_to_square(piece_bboxes,M)
+    print(fen)
+    return fen
+
+    # cv2.waitKey(0)
+    # cv2.destroyAllWindows()
+
+main()
