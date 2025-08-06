@@ -34,7 +34,7 @@ bproc.renderer.set_denoiser("OPTIX")
 bproc.renderer.set_light_bounces(3,3,4,4,12,8,0)
 
 # Load your scene
-loaded = bproc.loader.load_blend("ChessBoard.blend")
+loaded = bproc.loader.load_blend("ChessBoard2.blend")
 output_path = datetime.datetime.now().strftime("coco_data_%Y_%m_%d__%H_%M_%S")
 os.makedirs(output_path, exist_ok=True)
 # ----- PIECE PLACEMENT -----
@@ -204,7 +204,6 @@ pieceToSquareDict = {
     'WhiteQueen7':  'None',
     'WhiteQueen8':  'None',
     'WhiteQueen9':  'None',
-    'WhiteQueen10': 'None',
 
     'WhiteKing1':   'E1',
 
@@ -325,11 +324,6 @@ def randomizePositions(chance=0.5):
 def reset():
     #reset the pieces
     for name,square in pieceToSquareDict.items():
-        if square is "None":
-            continue
-        x,y = positionsDict[square.upper()]
-        bpy.data.objects[name].location.x  = x
-        bpy.data.objects[name].location.y  = y
         bpy.data.objects[name].hide_viewport = True
         bpy.data.objects[name].hide_render = True
 FILES = 'ABCDEFGH'
@@ -466,7 +460,7 @@ for z in range(num_random_setup):
         ]
     )  # Light above the chessboard
 
-    light.set_energy(random.uniform(250, 1250))
+    light.set_energy(random.uniform(250, 750))
     # Randomly shuffle the pieceList to create a new random setup
     # Determine which split this iteration belongs to (0=train, 1=val, 2=test)
 
@@ -485,15 +479,16 @@ for z in range(num_random_setup):
 
     try:
         row = next(fen_rows)
+        fen = row[0]
+        while fen in fen_visited:
+            print(f"FEN {fen} already visited, skipping...")
+            row = next(fen_rows)
+            fen = row[0]
+
     except StopIteration:
         print("No more FEN rows—stopping early.")
         break
 
-    # parse + update data based off stream
-    fen = row[0]
-    if fen in fen_visited:
-        print(f"FEN {fen} already visited, skipping...")
-        continue
     fen_visited.add(fen)
 
     pos = parse_fen(fen)
