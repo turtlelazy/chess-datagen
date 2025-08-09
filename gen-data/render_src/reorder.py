@@ -14,27 +14,26 @@ import json
 import os
 import math
 import datetime
+import argparse
 # Init BlenderProc and Optimize Your Settings
 # Using magical numbers found online
 # https://blenderartists.org/t/options-to-speed-up-a-render/1515328
 bproc.init()
 bproc.renderer.set_cpu_threads(0)
-bproc.renderer.set_render_devices(
-    use_only_cpu=False,
-    desired_gpu_device_type="OPTIX",  # TODO: Change to your gpu type
-    desired_gpu_ids=0
-)
+
+# TODO: Any gpu selection here if needed. Otherwise default will likely work
+# TODO: Check in terminal output if using your preferred GPU
+
+
 bproc.renderer.set_noise_threshold(0.1)
 
 # seems to not go any faster after lowering from 32
 bproc.renderer.set_max_amount_of_samples(32)
 
-bproc.renderer.set_denoiser("OPTIX")
-
 bproc.renderer.set_light_bounces(3,3,4,4,12,8,0)
 
 # Load your scene
-loaded = bproc.loader.load_blend("ChessBoard2.blend")
+loaded = bproc.loader.load_blend("ChessBoard.blend")
 output_path = datetime.datetime.now().strftime("coco_data_%Y_%m_%d__%H_%M_%S")
 os.makedirs(output_path, exist_ok=True)
 # ----- PIECE PLACEMENT -----
@@ -346,7 +345,7 @@ for piece, square in pieceToSquareDict.items():
     color = 'Black' if 'Black' in name else 'White'
     kind = re.sub(r'\d+$', '', piece[len(color):])
     initial_position = square
-    print(square)
+    # print(square)
     home_tile_color = 'Black' if ((FILES.index(square[0]) + RANKS.index(square[1])) % 2 == 0) else 'White'
     pieceList.append(Piece(name,kind,color,initial_position,home_tile_color))
 
@@ -404,8 +403,13 @@ print("K MATRIX", bproc.camera.get_intrinsics_as_K_matrix())
 # GPT Soup to create a fibonacci sphere for camera positions
 # This will create a set of camera positions that are evenly distributed around the sphere
   # Distance from origin
-N = 10    # Number of cameras
-num_random_setup = 1  # Number of random setups to generate
+parser = argparse.ArgumentParser(description="Chess data generator")
+parser.add_argument('--num_cameras', type=int, default=10, help='Number of camera positions')
+parser.add_argument('--num_random_setup', type=int, default=1, help='Number of random setups to generate')
+args = parser.parse_args()
+
+N = args.num_cameras
+num_random_setup = args.num_random_setup
 print(f"Generating {num_random_setup} random setups with {N} camera positions each...")
 # Golden angle in radians
 golden_angle = np.pi * (3 - np.sqrt(5))
@@ -435,7 +439,7 @@ for i in range(N):
     camera_info[i] = {"dist": rho, "rot": rotation.tolist(), "pos": pos.tolist()}
 
 # Render for each randomized position
-trn_val_tst_split = [6, 2, 2]
+trn_val_tst_split = [0, 0, 1]
 gcd = math.gcd(math.gcd(trn_val_tst_split[0], trn_val_tst_split[1]), trn_val_tst_split[2])
 trn_val_tst_split = [x // gcd for x in trn_val_tst_split]
 split_map = {0: 'train', 1: 'val', 2: 'test'}
@@ -538,8 +542,8 @@ for z in range(num_random_setup):
         data_list[path] = {}
         data_list[path]["board"] = fen
         data_list[path]["cam"] = dict(camera_info[i])
-        print(path, camera_info[i])
-        print(path, data_list[path])
+        # print(path, camera_info[i])
+        # print(path, data_list[path])
 
     # Save back to file
     with open(input_json_path, "w") as f:

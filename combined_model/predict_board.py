@@ -6,6 +6,10 @@ import cv2
 from PIL import Image
 from collections import defaultdict
 from ultralytics import YOLO
+import chess
+import chess.svg
+from cairosvg import svg2png
+import matplotlib.pyplot as plt
 
 # Paths
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../data_map")))
@@ -60,8 +64,8 @@ def convert_yolo_to_bbox_dict(yolo_result, class_names):
 # ------------------ Main Logic ------------------
 if __name__ == "__main__":
     # Input
-    example_image_path = "samples/000571.png"
-    model_path = "../../models/runs/detect/train4/weights/best.pt"
+    example_image_path = "samples/000069.png"
+    model_path = "models/train4/weights/best.pt"
     model = YOLO(model_path)
 
     # Load Image
@@ -100,6 +104,10 @@ if __name__ == "__main__":
     debug_image = warped_square.copy()
     square_size = 256
     cell_size = square_size / 8
+    main_fen = rotated_fens["0°"]
+    board = chess.Board(main_fen + " w - - 0 1")
+    svg_data = chess.svg.board(board=board, size=400)
+    svg2png(bytestring=svg_data.encode('utf-8'), write_to="board.png")
 
     for piece, bboxes in piece_bboxes.items():
         for bbox in bboxes:
@@ -112,3 +120,22 @@ if __name__ == "__main__":
             cv2.circle(debug_image, (int(u), int(v)), 3, (0, 255, 0), -1)
 
     cv2.imwrite("output.png", debug_image)
+    
+    # Load images for display
+    input_img = cv2.cvtColor(cv2.imread(example_image_path), cv2.COLOR_BGR2RGB)
+    board_img = np.array(Image.open("board.png"))
+
+    # Display side-by-side
+    fig, axes = plt.subplots(1, 2, figsize=(10, 5))
+    axes[0].imshow(input_img)
+    axes[0].set_title("Input Image")
+    axes[0].axis("off")
+
+    axes[1].imshow(board_img)
+    axes[1].set_title("Detected Board Position")
+    axes[1].axis("off")
+
+    plt.tight_layout()
+    plt.savefig("side_by_side.png", dpi=300)
+
+
