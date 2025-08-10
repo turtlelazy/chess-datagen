@@ -183,7 +183,11 @@ if  __name__ == "__main__":
     import os
     sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
     from ChessBoardDetector.Sams_X_corner.FindChessboards import processSingleCustomWrapper
+    import argparse
 
     # dir = "coco_data_2025_07_18__01_55_08/train"
-    dir = "../gen-data/render_src/coco_data_2025_07_22__23_40_11/train"
+    parser = argparse.ArgumentParser(description="Evaluate board segmentation.")
+    parser.add_argument("dir", type=str, help="Directory containing data")
+    args = parser.parse_args()
+    dir = args.dir
     test_coco(dir, processSingleCustomWrapper, vis=True, backg=True)
