@@ -64,7 +64,7 @@ def convert_yolo_to_bbox_dict(yolo_result, class_names):
 # ------------------ Main Logic ------------------
 if __name__ == "__main__":
     # Input
-    example_image_path = "samples/000571.png"
+    example_image_path = "samples/000069.png"
     model_path = "models/train4/weights/best.pt"
     model = YOLO(model_path)
 
