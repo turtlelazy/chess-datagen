@@ -6,14 +6,19 @@ Readme and project reproducability under construction.
 This project was started for a Hunter College Summer 2025 Capstone Course, developed by Ishraq Mahid, Warren Wu, Ivan Huang, and Tafseer Haque over the course of 2 months.
 
 The goal of the project was to create a model capable of taking a 2D image of a chessboard with chess pieces and outputting a representation of the chess positions. We utilize YOLO for object detection to detect the pieces, and create/utilize custom algorithms for board segmentation and creating the corresponding mappings.
+
+While we didn't necessarily hit all our goals and obtain perfect results, despite various resource defficiencies, time constraints, and project environment, we believe we accomplished a proof-of-concept model to take on this problem, serving as a model of how we would practically approach this problem on a larger and long-term scale.
+
+![SideBySide](/combined_model/side_by_side.png)
+
 ![Architecture](/architecture.jpg)
 
 ## Data and Testing
 Due to the lack of labeled data on chess boards and piece segmentations, we wrote data-generation scripts to automatically create Blender renders of a chessboard set in various positions. This allows the development of a proof of concept while having some data to work with. While synthetic data is obviously flawed, by using a synthetic dataset we could reasonably make progress on the scale of a class-project and with the time constraints. However, it still served as a realistic basis for the project and enabled development in a way which techniques could realistically be scaled onto real world data.
 
-With this synthetic data, we wrote out test scripts to test each individual stage of the model pipeline.
+With this synthetic data, we wrote out test scripts to test each individual stage of the model pipeline. Ideally, we would be able to replace the input dataset with labeled datasets to train, evaluate, and validate.
 
-
+![Sample](/combined_model/samples/000006.png)
 
 ## YOLO
 For chess piece and board detection, we trained a YOLO model on the annotated synthetic dataset and obtained the following results.
